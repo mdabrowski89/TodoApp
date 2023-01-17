@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="bottom_nav_todo_list">Todo list</string>
+    <string name="bottom_nav_geo_notes">Geo Notes</string>
+    <string name="bottom_nav_routines">Routines</string>
+</resources>

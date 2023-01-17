@@ -1,10 +1,28 @@
+# Android Studio project files
+.idea/
 *.iml
-.gradle
-/local.properties
-/.idea
+.idea/workspace.xml
+.navigation/
+captures/
 .DS_Store
-/build
-/captures
-.externalNativeBuild
-.cxx
+
+# Gradle files
+.gradle/
+build/
+
+# Local configuration file (sdk path, etc)
 local.properties
+
+# Built application files
+*.apk
+*.ap_
+*.dex
+*.class
+
+# Generated files
+bin/
+gen/
+out/
+
+# Log Files
+*.log

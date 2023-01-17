@@ -13,4 +13,11 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "TodoApp"
-include(":app")
+include(
+    ":app",
+    ":feature:home",
+    ":feature:todo-list",
+    ":feature:geo-notes",
+    ":feature:routines",
+    ":library:view-binding"
+)

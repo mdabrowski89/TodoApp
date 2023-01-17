@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/home_nav_graph"
+    app:startDestination="@id/todoListFragment"
+    >
+
+    <fragment
+        android:id="@+id/todoListFragment"
+        android:name="pl.mobite.todoapp.todolist.TodoListFragment"
+        android:label="TodoListFragment"
+        />
+    <fragment
+        android:id="@+id/geoNotesFragment"
+        android:name="pl.mobite.todoapp.geonotes.GeoNotesFragment"
+        android:label="GeoNotesFragment"
+        />
+    <fragment
+        android:id="@+id/routinesFragment"
+        android:name="pl.mobite.todoapp.routines.RoutinesFragment"
+        android:label="RoutinesFragment"
+        />
+</navigation>

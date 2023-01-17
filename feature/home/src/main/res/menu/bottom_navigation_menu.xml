@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/todoListFragment"
+        android:enabled="true"
+        android:icon="@drawable/ic_check"
+        android:title="@string/bottom_nav_todo_list"
+        />
+    <item
+        android:id="@+id/geoNotesFragment"
+        android:enabled="true"
+        android:icon="@drawable/ic_map"
+        android:title="@string/bottom_nav_geo_notes"
+        />
+    <item
+        android:id="@+id/routinesFragment"
+        android:enabled="true"
+        android:icon="@drawable/ic_routine"
+        android:title="@string/bottom_nav_routines"
+        />
+</menu>
