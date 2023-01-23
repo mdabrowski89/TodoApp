@@ -1,3 +1,5 @@
+@file:Suppress("UnstableApiUsage")
+
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
@@ -9,7 +11,6 @@ android {
 
     defaultConfig {
         minSdk = 21
-        targetSdk = 33
     }
 
     compileOptions {
@@ -22,6 +23,7 @@ android {
     buildFeatures {
         viewBinding = true
     }
+    namespace = "pl.mobite.todoapp.todolist"
 }
 
 dependencies {
