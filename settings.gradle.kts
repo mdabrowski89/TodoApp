@@ -19,5 +19,7 @@ include(
     ":feature:todo-list",
     ":feature:geo-notes",
     ":feature:routines",
-    ":library:view-binding"
+    ":library:view-binding",
+    ":library:mvi",
+    ":library:utilities"
 )
