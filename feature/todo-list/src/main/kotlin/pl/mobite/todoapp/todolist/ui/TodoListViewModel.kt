@@ -3,7 +3,6 @@ package pl.mobite.todoapp.todolist.ui
 import androidx.lifecycle.SavedStateHandle
 import pl.mobite.lib.mvi.MviViewModel
 import pl.mobite.lib.mvi.Reduction
-import pl.mobite.lib.mvi.createViewStateCache
 import pl.mobite.todoapp.todolist.data.DummyTodoItemService
 import pl.mobite.todoapp.todolist.domain.model.TodoItem
 import pl.mobite.todoapp.todolist.domain.usecase.AddTodoItemUseCase
@@ -15,8 +14,8 @@ import kotlin.random.Random
 class TodoListViewModel(
     savedStateHandle: SavedStateHandle,
 ) : MviViewModel<TodoListViewState>(
-    initialViewState = TodoListViewState(),
-    viewStateCache = createViewStateCache(savedStateHandle, isSavable = { !it.progressVisible })
+    savedStateHandle = savedStateHandle,
+    initialViewState = TodoListViewState()
 ) {
 
     private val getAllTodoItemUseCase = GetAllTodoItemsUseCase(DummyTodoItemService)
@@ -25,6 +24,8 @@ class TodoListViewModel(
     private val updateTodoItemUseCase = UpdateTodoItemUseCase(DummyTodoItemService)
 
     override fun defaultErrorHandler(t: Throwable): Reduction<TodoListViewState> = { it.withoutProgress() }
+
+    override fun isViewStateSavable(viewState: TodoListViewState) = !viewState.progressVisible
 
     fun loadItems() {
         if (currentViewState.todoItems != null) {

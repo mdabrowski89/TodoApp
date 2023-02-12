@@ -16,9 +16,16 @@ import pl.mobite.lib.mvi.dispatcher.DefaultReductionDispatcher
 import pl.mobite.lib.mvi.dispatcher.ReductionDispatcher
 
 abstract class MviViewModel<VS : ViewState>(
-    initialViewState: VS,
-    viewStateCache: ViewStateCache<VS>
+    savedStateHandle: SavedStateHandle,
+    initialViewState: VS
 ) : ViewModel() {
+
+    private val viewStateCache = ViewStateCache(
+        id = this::class.simpleName ?: "",
+        savedStateHandle = savedStateHandle,
+        isViewStateSavable = ::isViewStateSavable,
+        foldViewStateOnSave = ::foldViewStateOnSave
+    )
 
     private val actionDispatcher: ActionDispatcher<VS> = DefaultActionDispatcher()
     private val reductionDispatcher: ReductionDispatcher<VS> = DefaultReductionDispatcher(viewStateCache.get() ?: initialViewState)
@@ -30,6 +37,7 @@ abstract class MviViewModel<VS : ViewState>(
 
     init {
         viewStateFlow
+            .onEach(viewStateCache::set)
             .launchIn(viewModelScope)
 
         actionDispatcher.output
@@ -38,6 +46,10 @@ abstract class MviViewModel<VS : ViewState>(
     }
 
     abstract fun defaultErrorHandler(t: Throwable): Reduction<VS>
+
+    abstract fun isViewStateSavable(viewState: VS): Boolean
+
+    protected open fun foldViewStateOnSave(viewState: VS): VS = viewState
 
     fun processAction(
         id: String,
