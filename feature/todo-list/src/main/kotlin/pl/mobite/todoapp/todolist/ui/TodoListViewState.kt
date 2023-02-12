@@ -7,7 +7,7 @@ import pl.mobite.todoapp.todolist.domain.model.TodoItem
 
 @Parcelize
 data class TodoListViewState(
-    val progressVisible: Boolean = false,
+    val inProgress: Boolean = false,
     val todoItems: List<TodoItem>? = null,
 ) : ViewState {
 
@@ -17,5 +17,9 @@ data class TodoListViewState(
 
     @IgnoredOnParcel
     val addingItemsEnabled
-        get() = !progressVisible
+        get() = !inProgress
+
+    @IgnoredOnParcel
+    val progressVisible
+        get() = inProgress
 }

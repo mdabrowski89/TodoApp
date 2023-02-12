@@ -15,7 +15,7 @@ class TodoListViewModel(
     savedStateHandle: SavedStateHandle,
 ) : MviViewModel<TodoListViewState>(
     savedStateHandle = savedStateHandle,
-    initialViewState = TodoListViewState()
+    defaultViewState = TodoListViewState()
 ) {
 
     private val getAllTodoItemUseCase = GetAllTodoItemsUseCase(DummyTodoItemService)
@@ -25,7 +25,7 @@ class TodoListViewModel(
 
     override fun defaultErrorHandler(t: Throwable): Reduction<TodoListViewState> = { it.withoutProgress() }
 
-    override fun isViewStateSavable(viewState: TodoListViewState) = !viewState.progressVisible
+    override fun isViewStateSavable(viewState: TodoListViewState) = !viewState.inProgress
 
     fun loadItems() {
         if (currentViewState.todoItems != null) {
@@ -72,7 +72,7 @@ class TodoListViewModel(
         }
     }
 
-    private fun TodoListViewState.withProgress() = this.copy(progressVisible = true)
-    private fun TodoListViewState.withoutProgress() = this.copy(progressVisible = false)
+    private fun TodoListViewState.withProgress() = this.copy(inProgress = true)
+    private fun TodoListViewState.withoutProgress() = this.copy(inProgress = false)
     private fun TodoListViewState.withItems(todoItems: List<TodoItem>?) = this.copy(todoItems = todoItems)
 }

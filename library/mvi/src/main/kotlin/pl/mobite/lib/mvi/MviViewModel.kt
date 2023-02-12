@@ -11,13 +11,11 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import pl.mobite.lib.mvi.dispatcher.ActionDispatcher
-import pl.mobite.lib.mvi.dispatcher.DefaultActionDispatcher
-import pl.mobite.lib.mvi.dispatcher.DefaultReductionDispatcher
 import pl.mobite.lib.mvi.dispatcher.ReductionDispatcher
 
 abstract class MviViewModel<VS : ViewState>(
     savedStateHandle: SavedStateHandle,
-    initialViewState: VS
+    defaultViewState: VS
 ) : ViewModel() {
 
     private val viewStateCache = ViewStateCache(
@@ -27,8 +25,8 @@ abstract class MviViewModel<VS : ViewState>(
         foldViewStateOnSave = ::foldViewStateOnSave
     )
 
-    private val actionDispatcher: ActionDispatcher<VS> = DefaultActionDispatcher()
-    private val reductionDispatcher: ReductionDispatcher<VS> = DefaultReductionDispatcher(viewStateCache.get() ?: initialViewState)
+    private val actionDispatcher = ActionDispatcher<VS>()
+    private val reductionDispatcher = ReductionDispatcher(viewStateCache.get() ?: defaultViewState)
 
     val viewStateFlow: StateFlow<VS> = reductionDispatcher.output
 
@@ -52,11 +50,12 @@ abstract class MviViewModel<VS : ViewState>(
     protected open fun foldViewStateOnSave(viewState: VS): VS = viewState
 
     fun processAction(
-        id: String,
+        actionId: String,
         errorHandler: ((Throwable) -> Reduction<VS>)? = null,
         // TODO: unbound it from flow
         actionBlock: suspend FlowCollector<Reduction<VS>>.() -> Unit
     ) {
+        // TODO Simplify action creation
         val action = object : Action<VS> {
 
             override fun invoke(): Flow<Reduction<VS>> {
@@ -66,7 +65,7 @@ abstract class MviViewModel<VS : ViewState>(
                     }
             }
 
-            override fun getId(): String = id
+            override fun getId(): String = actionId
         }
         actionDispatcher.dispatch(action)
     }
