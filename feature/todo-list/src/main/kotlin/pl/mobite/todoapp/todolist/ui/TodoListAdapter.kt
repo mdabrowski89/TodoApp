@@ -13,7 +13,7 @@ import pl.mobite.todoapp.todolist.domain.model.TodoItem
 import pl.mobite.todoapp.todolist.ui.TodoListAdapter.TodoItemViewHolder
 
 class TodoListAdapter(
-    private val onItemStateChanged: ((Long, Boolean) -> Unit)
+    private val onItemStateChanged: ((TodoItem, Boolean) -> Unit)
 ) : ListAdapter<TodoItem, TodoItemViewHolder>(diffUtilItemCallback { this.id }) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): TodoItemViewHolder {
@@ -31,12 +31,12 @@ class TodoListAdapter(
 
         private val binding = ViewTodoItemBinding.bind(containerView)
 
-        fun bind(item: TodoItem, onItemStateChanged: ((Long, Boolean) -> Unit)) = with(binding) {
+        fun bind(item: TodoItem, onItemStateChanged: ((TodoItem, Boolean) -> Unit)) = with(binding) {
             isDoneCheck.setOnCheckedChangeListener(null)
             content.text = item.content
             isDoneCheck.isChecked = item.isDone
             isDoneCheck.setOnCheckedChangeListener { _, isDone ->
-                onItemStateChanged(item.id, isDone)
+                onItemStateChanged(item, isDone)
             }
         }
     }

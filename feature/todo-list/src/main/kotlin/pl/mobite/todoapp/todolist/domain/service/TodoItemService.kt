@@ -8,8 +8,6 @@ interface TodoItemService {
 
     suspend fun getAllDone(): List<TodoItem>
 
-    suspend fun getForId(id: Long): List<TodoItem>
-
     suspend fun addNew(todoItem: TodoItem): Long
 
     suspend fun update(todoItem: TodoItem)

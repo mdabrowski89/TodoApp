@@ -12,8 +12,6 @@ object DummyTodoItemService: TodoItemService {
 
     override suspend fun getAllDone(): List<TodoItem> = todoItems.values.filter { it.isDone }.toList()
 
-    override suspend fun getForId(id: Long): List<TodoItem> = todoItems[id]?.let { listOf(it) } ?: emptyList()
-
     override suspend fun addNew(todoItem: TodoItem): Long {
         val id = Random.nextLong()
         todoItems[id] = todoItem.copy(id = id)

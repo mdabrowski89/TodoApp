@@ -1,17 +1,15 @@
 package pl.mobite.todoapp.todolist.domain.usecase
 
-import pl.mobite.lib.utilities.SuspendableUseCase1n
+import kotlinx.coroutines.delay
 import pl.mobite.todoapp.todolist.domain.model.TodoItem
 import pl.mobite.todoapp.todolist.domain.service.TodoItemService
 
-interface UpdateTodoItemUseCase : SuspendableUseCase1n<TodoItem>
-
-@Suppress("PARAMETER_NAME_CHANGED_ON_OVERRIDE")
-class UpdateTodoItemUseCaseImpl(
+class UpdateTodoItemUseCase(
     private val todoItemService: TodoItemService
-) : UpdateTodoItemUseCase {
+) {
 
-    override suspend fun invoke(todoItem: TodoItem) {
+    suspend operator fun invoke(todoItem: TodoItem) {
+        delay(500)
         todoItemService.update(todoItem)
     }
 }
