@@ -9,8 +9,6 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
-import pl.mobite.lib.mvi.dispatcher.ActionDispatcher
-import pl.mobite.lib.mvi.dispatcher.ReductionDispatcher
 
 abstract class MviViewModel<VS : ViewState>(
     savedStateHandle: SavedStateHandle,
@@ -24,10 +22,9 @@ abstract class MviViewModel<VS : ViewState>(
         foldViewStateOnSave = ::foldViewStateOnSave
     )
 
-    private val actionDispatcher = ActionDispatcher<VS>()
-    private val reductionDispatcher = ReductionDispatcher(viewStateCache.get() ?: defaultViewState)
+    private val actionProcessor = ActionProcessor(initialState = viewStateCache.get() ?: defaultViewState)
 
-    val viewStateFlow: StateFlow<VS> = reductionDispatcher.output
+    val viewStateFlow: StateFlow<VS> = actionProcessor.viewStateFlow
 
     protected val currentViewState
         get() = viewStateFlow.value
@@ -37,16 +34,8 @@ abstract class MviViewModel<VS : ViewState>(
             .onEach(viewStateCache::set)
             .launchIn(viewModelScope)
 
-        actionDispatcher.output
-            .onEach(reductionDispatcher::dispatch)
-            .launchIn(viewModelScope)
+        actionProcessor.init(viewModelScope)
     }
-
-    abstract fun defaultErrorHandler(t: Throwable): Reduction<VS>
-
-    abstract fun isViewStateSavable(viewState: VS): Boolean
-
-    protected open fun foldViewStateOnSave(viewState: VS): VS = viewState
 
     fun processAction(
         actionId: String,
@@ -59,8 +48,14 @@ abstract class MviViewModel<VS : ViewState>(
                     reduce(errorHandler?.invoke(t) ?: defaultErrorHandler(t))
                 }
         }
-        actionDispatcher.dispatch(action)
+        actionProcessor.process(action)
     }
+
+    abstract fun defaultErrorHandler(t: Throwable): Reduction<VS>
+
+    abstract fun isViewStateSavable(viewState: VS): Boolean
+
+    protected open fun foldViewStateOnSave(viewState: VS): VS = viewState
 
     suspend fun FlowCollector<Reduction<VS>>.reduce(reduction: Reduction<VS>) {
         emit(reduction)
