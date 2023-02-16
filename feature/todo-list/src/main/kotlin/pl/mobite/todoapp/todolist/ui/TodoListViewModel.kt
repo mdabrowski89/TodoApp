@@ -46,8 +46,8 @@ class TodoListViewModel(
             reduce { it.withProgress() }
             val newItem = addTodoItemUseCase(TodoItem(Random.nextLong(), todoItemContent, false))
             reduce {
-                it.withoutProgress()
-                    .withItems(it.todoItems?.plus(newItem))
+                val newItems = it.todoItems?.plus(newItem)
+                it.withoutProgress().withItems(newItems)
             }
         }
     }
@@ -56,8 +56,8 @@ class TodoListViewModel(
         reduce { it.withProgress() }
         val deletedItems = deleteAllDoneTodoItemsUseCase()
         reduce {
-            it.withoutProgress()
-                .withItems(it.todoItems?.toMutableList()?.apply { removeAll(deletedItems) })
+            val newItems = it.todoItems?.toMutableList()?.apply { removeAll(deletedItems) }
+            it.withoutProgress().withItems(newItems)
         }
     }
 
@@ -67,8 +67,7 @@ class TodoListViewModel(
         updateTodoItemUseCase(updatedItem)
         reduce {
             val newItems = it.todoItems?.map { item -> if (item.id == updatedItem.id) updatedItem else item }
-            it.withoutProgress()
-                .withItems(newItems)
+            it.withoutProgress().withItems(newItems)
         }
     }
 

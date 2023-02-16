@@ -23,7 +23,7 @@ class ActionDispatcher<VS : ViewState> {
         val coroutineRunner = CoroutineRunner()
         actionChannel.receiveAsFlow().collect { action: Action<VS> ->
             // get id in order to identify the coroutine which is processing the action
-            val id = action.getId()
+            val id = action.id
             with(coroutineRunner) {
                 // cancel current coroutine which is processing the action
                 // and suspend until it is canceled
@@ -31,7 +31,7 @@ class ActionDispatcher<VS : ViewState> {
 
                 // launch new coroutine which will process the action
                 // and send view state reduction to the output channel flow
-                launchCoroutine(id) { action().collect(::send) }
+                launchCoroutine(id) { action.process().collect(::send) }
             }
         }
     }

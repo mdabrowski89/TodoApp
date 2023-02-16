@@ -3,7 +3,6 @@ package pl.mobite.lib.mvi
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
@@ -52,20 +51,13 @@ abstract class MviViewModel<VS : ViewState>(
     fun processAction(
         actionId: String,
         errorHandler: ((Throwable) -> Reduction<VS>)? = null,
-        // TODO: unbound it from flow
         actionBlock: suspend FlowCollector<Reduction<VS>>.() -> Unit
     ) {
-        // TODO Simplify action creation
-        val action = object : Action<VS> {
-
-            override fun invoke(): Flow<Reduction<VS>> {
-                return flow(actionBlock)
-                    .catch { t ->
-                        reduce(errorHandler?.invoke(t) ?: defaultErrorHandler(t))
-                    }
-            }
-
-            override fun getId(): String = actionId
+        val action = Action(actionId) {
+            flow(actionBlock)
+                .catch { t ->
+                    reduce(errorHandler?.invoke(t) ?: defaultErrorHandler(t))
+                }
         }
         actionDispatcher.dispatch(action)
     }

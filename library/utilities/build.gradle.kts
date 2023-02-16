@@ -27,5 +27,6 @@ android {
 }
 
 dependencies {
+    implementation("androidx.fragment:fragment-ktx:1.5.5")
     implementation("androidx.recyclerview:recyclerview:1.2.1")
 }

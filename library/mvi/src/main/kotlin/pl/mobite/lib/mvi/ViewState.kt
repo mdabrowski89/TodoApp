@@ -5,11 +5,6 @@ import kotlinx.coroutines.flow.Flow
 
 interface ViewState : Parcelable
 
-interface Action<VS : ViewState> {
-
-    operator fun invoke(): Flow<Reduction<VS>>
-
-    fun getId(): String
-}
+class Action<VS : ViewState>(val id: String, val process: () -> Flow<Reduction<VS>>)
 
 typealias Reduction<VS> = (VS) -> VS
