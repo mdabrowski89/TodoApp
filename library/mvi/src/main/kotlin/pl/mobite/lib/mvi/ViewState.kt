@@ -5,6 +5,6 @@ import kotlinx.coroutines.flow.Flow
 
 interface ViewState : Parcelable
 
-class Action<VS : ViewState>(val id: String, val process: () -> Flow<Reduction<VS>>)
+internal class Action<VS : ViewState>(val id: String, val process: () -> Flow<Reduction<VS>>)
 
 typealias Reduction<VS> = (VS) -> VS

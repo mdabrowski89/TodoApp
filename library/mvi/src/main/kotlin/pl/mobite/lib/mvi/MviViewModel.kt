@@ -1,5 +1,6 @@
 package pl.mobite.lib.mvi
 
+import android.os.TransactionTooLargeException
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -19,7 +20,7 @@ abstract class MviViewModel<VS : ViewState>(
         id = this::class.simpleName ?: "",
         savedStateHandle = savedStateHandle,
         isViewStateSavable = ::isViewStateSavable,
-        foldViewStateOnSave = ::foldViewStateOnSave
+        foldViewStateOnSave = ::foldViewStateOnSaveToCache
     )
 
     private val actionProcessor = ActionProcessor(initialState = viewStateCache.get() ?: defaultViewState)
@@ -37,6 +38,10 @@ abstract class MviViewModel<VS : ViewState>(
         actionProcessor.init(viewModelScope)
     }
 
+    /**
+     * Executes provided [actionBlock] in new coroutine on the [viewModelScope]
+     * @param actionBlock - method which creates flow of [Reduction]
+     */
     fun processAction(
         actionId: String,
         errorHandler: ((Throwable) -> Reduction<VS>)? = null,
@@ -51,12 +56,31 @@ abstract class MviViewModel<VS : ViewState>(
         actionProcessor.process(action)
     }
 
+    /**
+     * [Reduction] which is emitted on the action processing exception if the [processAction] itself does not define an error handler
+     */
     abstract fun defaultErrorHandler(t: Throwable): Reduction<VS>
 
+    /**
+     * Returns information whether provided [viewState] can be save to [ViewStateCache].
+     * In general the view states which represents any pending operations (like fetching data) should not be saved because the view state
+     * from the cache is used only in case when whole process is recreated and then all pending operations are canceled. Restoring state which
+     * represents some pending operation can result in displaying wrong UI components - eg. application may look like its loading the data
+     * but in fact the load operation is not performed.
+     */
     abstract fun isViewStateSavable(viewState: VS): Boolean
 
-    protected open fun foldViewStateOnSave(viewState: VS): VS = viewState
+    /**
+     * If the [viewState] contains a lot of data it may exceed IPC transaction limits and the [TransactionTooLargeException] can be thrown during
+     * the process recreation.
+     * https://developer.android.com/reference/android/os/TransactionTooLargeException
+     * This method allows to remove some heavy data from the view state before it is saved to [ViewStateCache].
+     */
+    protected open fun foldViewStateOnSaveToCache(viewState: VS): VS = viewState
 
+    /**
+     * Helper function which emitting provided [Reduction] objects. It is added as a part of DLS of the [processAction] method.
+     */
     suspend fun FlowCollector<Reduction<VS>>.reduce(reduction: Reduction<VS>) {
         emit(reduction)
     }
