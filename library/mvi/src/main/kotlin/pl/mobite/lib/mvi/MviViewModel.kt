@@ -12,18 +12,16 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 
 abstract class MviViewModel<VS : ViewState>(
-    savedStateHandle: SavedStateHandle,
+    private val savedStateHandle: SavedStateHandle,
     defaultViewState: VS
 ) : ViewModel() {
 
-    private val viewStateCache = ViewStateCache(
-        id = this::class.simpleName ?: "",
-        savedStateHandle = savedStateHandle,
-        isViewStateSavable = ::isViewStateSavable,
-        foldViewStateOnSave = ::foldViewStateOnSaveToCache
-    )
+    private val viewStateKey = "cache.viewState.${this::class.simpleName}"
 
-    private val actionProcessor = ActionProcessor(initialState = viewStateCache.get() ?: defaultViewState)
+    private val actionProcessor: ActionProcessor<VS> = ActionProcessor(
+        initialState = savedStateHandle.get<VS>(viewStateKey) ?: defaultViewState,
+        coroutineScope = viewModelScope
+    )
 
     val viewStateFlow: StateFlow<VS> = actionProcessor.viewStateFlow
 
@@ -32,10 +30,8 @@ abstract class MviViewModel<VS : ViewState>(
 
     init {
         viewStateFlow
-            .onEach(viewStateCache::set)
+            .onEach(::saveViewState)
             .launchIn(viewModelScope)
-
-        actionProcessor.init(viewModelScope)
     }
 
     /**
@@ -59,29 +55,35 @@ abstract class MviViewModel<VS : ViewState>(
     /**
      * [Reduction] which is emitted on the action processing exception if the [processAction] itself does not define an error handler
      */
-    abstract fun defaultErrorHandler(t: Throwable): Reduction<VS>
+    protected abstract fun defaultErrorHandler(t: Throwable): Reduction<VS>
 
     /**
-     * Returns information whether provided [viewState] can be save to [ViewStateCache].
+     * Returns information whether provided [viewState] can be save to [savedStateHandle].
      * In general the view states which represents any pending operations (like fetching data) should not be saved because the view state
      * from the cache is used only in case when whole process is recreated and then all pending operations are canceled. Restoring state which
      * represents some pending operation can result in displaying wrong UI components - eg. application may look like its loading the data
      * but in fact the load operation is not performed.
      */
-    abstract fun isViewStateSavable(viewState: VS): Boolean
+    protected abstract fun isViewStateSavable(viewState: VS): Boolean
 
     /**
      * If the [viewState] contains a lot of data it may exceed IPC transaction limits and the [TransactionTooLargeException] can be thrown during
      * the process recreation.
      * https://developer.android.com/reference/android/os/TransactionTooLargeException
-     * This method allows to remove some heavy data from the view state before it is saved to [ViewStateCache].
+     * This method allows to remove some heavy data from the view state before it is saved to [savedStateHandle].
      */
     protected open fun foldViewStateOnSaveToCache(viewState: VS): VS = viewState
 
     /**
      * Helper function which emitting provided [Reduction] objects. It is added as a part of DLS of the [processAction] method.
      */
-    suspend fun FlowCollector<Reduction<VS>>.reduce(reduction: Reduction<VS>) {
+    protected suspend fun FlowCollector<Reduction<VS>>.reduce(reduction: Reduction<VS>) {
         emit(reduction)
+    }
+
+    private fun saveViewState(viewState: VS) {
+        if (isViewStateSavable(viewState)) {
+            savedStateHandle[viewStateKey] = foldViewStateOnSaveToCache(viewState)
+        }
     }
 }
