@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.onEach
  * Base [ViewModel] class which is able to create and process [Action]s and it exposes the flow of [ViewState]s.
  * Actions are created and sends to the processing in [processAction] method. View states are emitted via [viewStateFlow]
  *
- * Internally it uses [ActionProcessor] as an engine which process [Action]s, collects its [Reduction]s and converts them into new [ViewState]s.
+ * Internally it uses [ActionProcessor] as an engine which process [Action]s, collects its [Reducer]s and uses them to create new [ViewState]s.
  *
  * It is also caching the recently emitted [ViewState] and it is later used as  [ViewModel] recreation.
  *
@@ -49,13 +49,13 @@ abstract class MviViewModel<VS : ViewState>(
     /**
      * Creates new [Action] object and sends it to be processed by the [ActionProcessor].
      * @param actionId - when action processing starts then the previously processed action with the same id is canceled.
-     * @param errorHandler - reduction which is emitted after the action processing is interrupted by an unhandled exception
-     * @param actionBlock - action body is defined as method which is passed to the [Reduction] flow build
+     * @param errorHandler - it returns reducer which is emitted after the action processing is interrupted by an unhandled exception
+     * @param actionBlock - action body is defined as method which is passed to the [Reducer] flow build
      */
     fun processAction(
         actionId: String,
-        errorHandler: (Throwable) -> Reduction<VS> = ::defaultErrorHandler,
-        actionBlock: suspend FlowCollector<Reduction<VS>>.() -> Unit
+        errorHandler: (Throwable) -> Reducer<VS> = ::defaultErrorHandler,
+        actionBlock: suspend FlowCollector<Reducer<VS>>.() -> Unit
     ) {
         val action = Action(actionId) {
             flow(actionBlock)
@@ -65,10 +65,10 @@ abstract class MviViewModel<VS : ViewState>(
     }
 
     /**
-     * Returns [Reduction] which is emitted after the action processing is interrupted by an unhandled exception.
+     * Returns [Reducer] which is emitted after the action processing is interrupted by an unhandled exception.
      * This is used as a default when the [processAction] method does not provide its own error handler.
      */
-    protected abstract fun defaultErrorHandler(t: Throwable): Reduction<VS>
+    protected abstract fun defaultErrorHandler(t: Throwable): Reducer<VS>
 
     /**
      * Stores the provided [ViewState] object in the [savedStateHandle] in order to be able to restore it on ViewModel recreation.
@@ -97,9 +97,9 @@ abstract class MviViewModel<VS : ViewState>(
     protected open fun foldViewStateOnSaveToCache(viewState: VS): VS = viewState
 
     /**
-     * Helper function which emitting provided [Reduction] objects. It is added as a part of DLS of the [processAction] method.
+     * Helper function which emitting provided [Reducer] objects. It is added as a part of DLS of the [processAction] method.
      */
-    protected suspend fun FlowCollector<Reduction<VS>>.reduce(reduction: Reduction<VS>) {
-        emit(reduction)
+    protected suspend fun FlowCollector<Reducer<VS>>.reduce(reducer: Reducer<VS>) {
+        emit(reducer)
     }
 }

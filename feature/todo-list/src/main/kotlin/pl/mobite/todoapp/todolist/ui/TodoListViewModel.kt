@@ -2,7 +2,7 @@ package pl.mobite.todoapp.todolist.ui
 
 import androidx.lifecycle.SavedStateHandle
 import pl.mobite.lib.mvi.MviViewModel
-import pl.mobite.lib.mvi.Reduction
+import pl.mobite.lib.mvi.Reducer
 import pl.mobite.todoapp.todolist.data.DummyTodoItemService
 import pl.mobite.todoapp.todolist.domain.model.TodoItem
 import pl.mobite.todoapp.todolist.domain.usecase.AddTodoItemUseCase
@@ -23,7 +23,7 @@ class TodoListViewModel(
     private val deleteAllDoneTodoItemsUseCase = DeleteAllDoneTodoItemsUseCase(DummyTodoItemService)
     private val updateTodoItemUseCase = UpdateTodoItemUseCase(DummyTodoItemService)
 
-    override fun defaultErrorHandler(t: Throwable): Reduction<TodoListViewState> = { it.withoutProgress() }
+    override fun defaultErrorHandler(t: Throwable): Reducer<TodoListViewState> = { withError(t) }
 
     override fun isViewStateSavable(viewState: TodoListViewState) = !viewState.inProgress
 
@@ -32,9 +32,9 @@ class TodoListViewModel(
             return
         }
         processAction("loadItems") {
-            reduce { it.withProgress() }
+            reduce { withProgress() }
             val todoItems = getAllTodoItemUseCase()
-            reduce { it.withoutProgress().withItems(todoItems) }
+            reduce { withItems(todoItems) }
         }
     }
 
@@ -43,35 +43,35 @@ class TodoListViewModel(
             return
         }
         processAction("addItem") {
-            reduce { it.withProgress() }
+            reduce { withProgress() }
             val newItem = addTodoItemUseCase(TodoItem(Random.nextLong(), todoItemContent, false))
             reduce {
-                val newItems = it.todoItems?.plus(newItem)
-                it.withoutProgress().withItems(newItems)
+                val newItems = todoItems?.plus(newItem)
+                withItems(newItems)
             }
         }
     }
 
     fun deleteCompletedItems() = processAction("deleteCompletedItems") {
-        reduce { it.withProgress() }
+        reduce { withProgress() }
         val deletedItems = deleteAllDoneTodoItemsUseCase()
         reduce {
-            val newItems = it.todoItems?.toMutableList()?.apply { removeAll(deletedItems) }
-            it.withoutProgress().withItems(newItems)
+            val newItems = todoItems?.toMutableList()?.apply { removeAll(deletedItems) }
+            withItems(newItems)
         }
     }
 
     fun updateItem(item: TodoItem, isDone: Boolean) = processAction("updateItem-${item.id}") {
-        reduce { it.withProgress() }
+        reduce { withProgress() }
         val updatedItem = item.copy(isDone = isDone)
         updateTodoItemUseCase(updatedItem)
         reduce {
-            val newItems = it.todoItems?.map { item -> if (item.id == updatedItem.id) updatedItem else item }
-            it.withoutProgress().withItems(newItems)
+            val newItems = todoItems?.map { item -> if (item.id == updatedItem.id) updatedItem else item }
+            withItems(newItems)
         }
     }
 
     private fun TodoListViewState.withProgress() = this.copy(inProgress = true)
-    private fun TodoListViewState.withoutProgress() = this.copy(inProgress = false)
-    private fun TodoListViewState.withItems(todoItems: List<TodoItem>?) = this.copy(todoItems = todoItems)
+    private fun TodoListViewState.withError(t: Throwable) = this.copy(inProgress = false)
+    private fun TodoListViewState.withItems(todoItems: List<TodoItem>?) = this.copy(inProgress = false, todoItems = todoItems)
 }

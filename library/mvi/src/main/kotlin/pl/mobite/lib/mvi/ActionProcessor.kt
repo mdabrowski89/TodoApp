@@ -15,11 +15,11 @@ import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 
 /**
- * Engine which takes and process [Action]s, collects its [Reduction]s and emits new [ViewState]s by reducing the collected reductions with
+ * Engine which takes and process [Action]s, collects its [Reducer]s and emits new [ViewState]s by executing the collected reducers with
  * current viewState value. Actions are taken by the [process] method and view states are emitted via [viewStateFlow].
  *
  * @param initialViewState - [ViewState] which is emitted as a first object by the flow of view states
- * @param coroutineScope - coroutine scope on which the flow of [Reduction] is collected. It is also used as a parent scope for the individual scopes
+ * @param coroutineScope - coroutine scope on which the flow of [Reducer]s is collected. It is also used as a parent scope for the individual scopes
  * in which actions are executed.
  */
 internal class ActionProcessor<VS : ViewState>(
@@ -52,11 +52,11 @@ internal class ActionProcessor<VS : ViewState>(
     }
 
     /**
-     * Starts new channel for [Reduction] objects and returns it as flow.
+     * Starts new channel for [Reducer] objects and returns it as flow.
      * Channel is created in a way that it collects all actions from the [actionChannel],
-     * process them, and sends the resulted [Reduction] objects to itself.
+     * process them, and sends the resulted [Reducer] objects to itself.
      */
-    private fun collectAndProcessActions(): Flow<Reduction<VS>> = channelFlow {
+    private fun collectAndProcessActions(): Flow<Reducer<VS>> = channelFlow {
 
         // For each [action.id] it keeps the dedicated coroutine scope in which this action is executed.
         // This allows for easy cancellation of currently processed action when new action (with the same id) is send to the processing.
@@ -67,7 +67,7 @@ internal class ActionProcessor<VS : ViewState>(
 
             // for each action: get the [CoroutineScope] of this action based on its id
             val actionCoroutineScope = coroutineScopePerActionId.getOrPut(action.id) {
-                // if not present then create new one from the [Reduction] channel context and new Job object
+                // if not present then create new one from the [Reducer] channel context and new Job object
                 CoroutineScope(this.coroutineContext + Job())
             }
 
@@ -76,17 +76,17 @@ internal class ActionProcessor<VS : ViewState>(
 
             // within the coroutine scope dedicated to the action create new coroutine which will start the action processing
             actionCoroutineScope.launch(Dispatchers.Default) {
-                // results of the processing are sent to the [Reduction] channel
+                // results of the processing are sent to the [Reducer] channel
                 action.process().collect(::send)
             }
         }
     }
 
     /**
-     * Emits new [ViewState] on the [viewStateFlow] by applying [Reduction] to the current [ViewState]
+     * Emits new [ViewState] on the [viewStateFlow] by applying [Reducer] to the current [ViewState]
      */
-    private fun reduce(reduction: Reduction<VS>) {
-        viewStateFlow.value = reduction(viewStateFlow.value)
+    private fun reduce(reducer: Reducer<VS>) {
+        viewStateFlow.value = viewStateFlow.value.reducer()
     }
 
     /**
