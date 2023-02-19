@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="button_add">Add</string>
+    <string name="button_delete_competed_items">Delete completed items</string>
+    <string name="new_todo_item_hint">New todo item</string>
+</resources>

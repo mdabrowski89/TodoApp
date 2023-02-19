@@ -3,7 +3,6 @@
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
-    id("kotlin-parcelize")
 }
 
 android {
@@ -24,15 +23,11 @@ android {
     buildFeatures {
         viewBinding = true
     }
-    namespace = "pl.mobite.todoapp.todolist"
+    namespace = "pl.mobite.lib.mvi"
 }
 
 dependencies {
-    implementation(project(":library:view-binding"))
-    implementation(project(":library:mvi"))
-    implementation(project(":library:utilities"))
-
-    implementation("androidx.fragment:fragment-ktx:1.5.5")
-    implementation("androidx.constraintlayout:constraintlayout:2.1.4")
-    implementation("androidx.recyclerview:recyclerview:1.2.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.5.1")
+    implementation("androidx.lifecycle:lifecycle-viewmodel-savedstate:2.5.1")
 }
