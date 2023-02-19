@@ -15,7 +15,7 @@ class TodoListViewModel(
     savedStateHandle: SavedStateHandle,
 ) : MviViewModel<TodoListViewState>(
     savedStateHandle = savedStateHandle,
-    defaultViewState = TodoListViewState()
+    initialViewState = TodoListViewState()
 ) {
 
     private val getAllTodoItemUseCase = GetAllTodoItemsUseCase(DummyTodoItemService)
@@ -28,7 +28,7 @@ class TodoListViewModel(
     override fun isViewStateSavable(viewState: TodoListViewState) = !viewState.inProgress
 
     fun loadItems() {
-        if (currentViewState.todoItems != null) {
+        if (viewState.todoItems != null) {
             return
         }
         processAction("loadItems") {

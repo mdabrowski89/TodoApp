@@ -1,6 +1,8 @@
 package pl.mobite.lib.mvi
 
 import android.os.Parcelable
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -14,6 +16,15 @@ interface ViewState : Parcelable
 typealias Reduction<VS> = (VS) -> VS
 
 /**
- * Representation of an operation with result in multiple changes of the UI. Those changes are represented by the [Flow] of [Reduction] objects.
+ * Representation of an asynchronous operation with results in one or multiple UI changes.
+ * Each UI change is represented by the [Reduction] of the [ViewState].
+ * Action are processed by the [ActionProcessor] - thanks to the usage of coroutines multiple actions can run at the same time.
+ *
+ * @param id - identification string of this action (can be any string). New action cancel the currently processed action with the same [id].
+ * @param process - action body, it is invoked in new a coroutine, on a [Dispatchers.Default] and in [viewModelScope].
+ * The [Reduction]s which are emitted from the resulted flow are executed on a main thread ([Dispatchers.Main]).
  */
-class Action<VS : ViewState>(val id: String, val process: () -> Flow<Reduction<VS>>)
+class Action<VS : ViewState>(
+    val id: String,
+    val process: () -> Flow<Reduction<VS>>
+)

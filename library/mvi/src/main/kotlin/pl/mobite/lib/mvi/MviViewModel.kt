@@ -11,21 +11,33 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 
+/**
+ * Base [ViewModel] class which is able to create and process [Action]s and it exposes the flow of [ViewState]s.
+ * Actions are created and sends to the processing in [processAction] method. View states are emitted via [viewStateFlow]
+ *
+ * Internally it uses [ActionProcessor] as an engine which process [Action]s, collects its [Reduction]s and converts them into new [ViewState]s.
+ *
+ * It is also caching the recently emitted [ViewState] and it is later used as  [ViewModel] recreation.
+ *
+ * @param savedStateHandle - used as a cache to store recently emitted [ViewState]s.
+ * @param initialViewState - [ViewState] which is emitted as a first object by the flow of view states (it is ignored on viewModel recreation when
+ * there is already a different view state object in the cache - the view state from the is emitted in this case).
+ */
 abstract class MviViewModel<VS : ViewState>(
     private val savedStateHandle: SavedStateHandle,
-    defaultViewState: VS
+    initialViewState: VS
 ) : ViewModel() {
 
     private val viewStateKey = "cache.viewState.${this::class.simpleName}"
 
     private val actionProcessor: ActionProcessor<VS> = ActionProcessor(
-        initialState = savedStateHandle.get<VS>(viewStateKey) ?: defaultViewState,
+        initialViewState = savedStateHandle.get<VS>(viewStateKey) ?: initialViewState,
         coroutineScope = viewModelScope
     )
 
     val viewStateFlow: StateFlow<VS> = actionProcessor.viewStateFlow
 
-    protected val currentViewState
+    protected val viewState
         get() = viewStateFlow.value
 
     init {
@@ -35,27 +47,37 @@ abstract class MviViewModel<VS : ViewState>(
     }
 
     /**
-     * Executes provided [actionBlock] in new coroutine on the [viewModelScope]
-     * @param actionBlock - method which creates flow of [Reduction]
+     * Creates new [Action] object and sends it to be processed by the [ActionProcessor].
+     * @param actionId - when action processing starts then the previously processed action with the same id is canceled.
+     * @param errorHandler - reduction which is emitted after the action processing is interrupted by an unhandled exception
+     * @param actionBlock - action body is defined as method which is passed to the [Reduction] flow build
      */
     fun processAction(
         actionId: String,
-        errorHandler: ((Throwable) -> Reduction<VS>)? = null,
+        errorHandler: (Throwable) -> Reduction<VS> = ::defaultErrorHandler,
         actionBlock: suspend FlowCollector<Reduction<VS>>.() -> Unit
     ) {
         val action = Action(actionId) {
             flow(actionBlock)
-                .catch { t ->
-                    reduce(errorHandler?.invoke(t) ?: defaultErrorHandler(t))
-                }
+                .catch { reduce(errorHandler(it)) }
         }
         actionProcessor.process(action)
     }
 
     /**
-     * [Reduction] which is emitted on the action processing exception if the [processAction] itself does not define an error handler
+     * Returns [Reduction] which is emitted after the action processing is interrupted by an unhandled exception.
+     * This is used as a default when the [processAction] method does not provide its own error handler.
      */
     protected abstract fun defaultErrorHandler(t: Throwable): Reduction<VS>
+
+    /**
+     * Stores the provided [ViewState] object in the [savedStateHandle] in order to be able to restore it on ViewModel recreation.
+     */
+    private fun saveViewState(viewState: VS) {
+        if (isViewStateSavable(viewState)) {
+            savedStateHandle[viewStateKey] = foldViewStateOnSaveToCache(viewState)
+        }
+    }
 
     /**
      * Returns information whether provided [viewState] can be save to [savedStateHandle].
@@ -68,7 +90,7 @@ abstract class MviViewModel<VS : ViewState>(
 
     /**
      * If the [viewState] contains a lot of data it may exceed IPC transaction limits and the [TransactionTooLargeException] can be thrown during
-     * the process recreation.
+     * the process (and ViewModel) recreation.
      * https://developer.android.com/reference/android/os/TransactionTooLargeException
      * This method allows to remove some heavy data from the view state before it is saved to [savedStateHandle].
      */
@@ -79,11 +101,5 @@ abstract class MviViewModel<VS : ViewState>(
      */
     protected suspend fun FlowCollector<Reduction<VS>>.reduce(reduction: Reduction<VS>) {
         emit(reduction)
-    }
-
-    private fun saveViewState(viewState: VS) {
-        if (isViewStateSavable(viewState)) {
-            savedStateHandle[viewStateKey] = foldViewStateOnSaveToCache(viewState)
-        }
     }
 }

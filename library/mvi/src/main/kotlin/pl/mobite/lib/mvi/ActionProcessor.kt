@@ -15,18 +15,26 @@ import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 
 /**
- * Component responsible for processing [Action] objects, as a result of this processing it emits flow of [ViewState] objects.
+ * Engine which takes and process [Action]s, collects its [Reduction]s and emits new [ViewState]s by reducing the collected reductions with
+ * current viewState value. Actions are taken by the [process] method and view states are emitted via [viewStateFlow].
+ *
+ * @param initialViewState - [ViewState] which is emitted as a first object by the flow of view states
+ * @param coroutineScope - coroutine scope on which the flow of [Reduction] is collected. It is also used as a parent scope for the individual scopes
+ * in which actions are executed.
  */
 internal class ActionProcessor<VS : ViewState>(
-    initialState: VS,
+    initialViewState: VS,
     coroutineScope: CoroutineScope
 ) {
 
     /**
      * Output flow which emits [ViewState] objects
      */
-    val viewStateFlow = MutableStateFlow(initialState)
+    val viewStateFlow = MutableStateFlow(initialViewState)
 
+    /**
+     * Channel to which the [Action]s are send
+     */
     private val actionChannel: Channel<Action<VS>> = Channel(Channel.UNLIMITED)
 
     init {
@@ -36,7 +44,8 @@ internal class ActionProcessor<VS : ViewState>(
     }
 
     /**
-     * Send action for the processing
+     * Send action for the processing.
+     * Each action `process()` methods is executed in a new coroutine which runs on a [Dispatchers.Default] and in scope dedicated to the [Action.id].
      */
     fun process(action: Action<VS>) {
         actionChannel.trySend(action)
@@ -49,23 +58,24 @@ internal class ActionProcessor<VS : ViewState>(
      */
     private fun collectAndProcessActions(): Flow<Reduction<VS>> = channelFlow {
 
-        // for every action.id it contains a scope in which this action will be processed
-        val actionScopes: HashMap<String, CoroutineScope> = hashMapOf()
+        // For each [action.id] it keeps the dedicated coroutine scope in which this action is executed.
+        // This allows for easy cancellation of currently processed action when new action (with the same id) is send to the processing.
+        val coroutineScopePerActionId: HashMap<String, CoroutineScope> = hashMapOf()
 
-        // collect every action from actions channel
+        // collect actions from actionsChannel
         actionChannel.receiveAsFlow().collect { action: Action<VS> ->
-            
+
             // for each action: get the [CoroutineScope] of this action based on its id
-            val actionScope = actionScopes.getOrPut(action.id) {
-                // if not present then create new from the [Reduction] channel context and new Job object
+            val actionCoroutineScope = coroutineScopePerActionId.getOrPut(action.id) {
+                // if not present then create new one from the [Reduction] channel context and new Job object
                 CoroutineScope(this.coroutineContext + Job())
             }
 
-            // cancel any actions which are currently processed in the action [CoroutineScope]
-            actionScope.coroutineContext[Job]?.cancelChildrenAndJoin()
+            // cancel any actions which are currently processed in the coroutine scope which is dedicated to this action.id
+            actionCoroutineScope.coroutineContext[Job]?.cancelChildrenAndJoin()
 
-            // within the action [CoroutineScope] create new coroutine which will start the action processing
-            actionScope.launch(Dispatchers.Default) {
+            // within the coroutine scope dedicated to the action create new coroutine which will start the action processing
+            actionCoroutineScope.launch(Dispatchers.Default) {
                 // results of the processing are sent to the [Reduction] channel
                 action.process().collect(::send)
             }
