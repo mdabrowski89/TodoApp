@@ -29,5 +29,5 @@ android {
 dependencies {
     implementation(project(":library:view-binding"))
 
-    implementation("androidx.fragment:fragment-ktx:1.5.5")
+    implementation("androidx.fragment:fragment-ktx:1.5.7")
 }

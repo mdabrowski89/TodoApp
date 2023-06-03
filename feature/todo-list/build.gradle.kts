@@ -32,7 +32,7 @@ dependencies {
     implementation(project(":library:mvi"))
     implementation(project(":library:utilities"))
 
-    implementation("androidx.fragment:fragment-ktx:1.5.5")
+    implementation("androidx.fragment:fragment-ktx:1.5.7")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
-    implementation("androidx.recyclerview:recyclerview:1.2.1")
+    implementation("androidx.recyclerview:recyclerview:1.3.0")
 }
