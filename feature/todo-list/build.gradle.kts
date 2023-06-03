@@ -4,6 +4,7 @@ plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
     id("kotlin-parcelize")
+    id("common-config-plugin")
 }
 
 android {
@@ -32,7 +33,7 @@ dependencies {
     implementation(project(":library:mvi"))
     implementation(project(":library:utilities"))
 
-    implementation("androidx.fragment:fragment-ktx:1.5.7")
+    implementation(Deps.fragment_ktx)
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("androidx.recyclerview:recyclerview:1.3.0")
 }

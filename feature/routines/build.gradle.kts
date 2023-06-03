@@ -3,6 +3,7 @@
 plugins {
     id("com.android.library")
     id("org.jetbrains.kotlin.android")
+    id("common-config-plugin")
 }
 
 android {
@@ -29,5 +30,5 @@ android {
 dependencies {
     implementation(project(":library:view-binding"))
 
-    implementation("androidx.fragment:fragment-ktx:1.5.7")
+    implementation(Deps.fragment_ktx)
 }

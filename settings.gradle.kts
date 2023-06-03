@@ -13,6 +13,9 @@ dependencyResolutionManagement {
     }
 }
 rootProject.name = "TodoApp"
+
+includeBuild("gradle-config")
+
 include(
     ":app",
     ":feature:home",
