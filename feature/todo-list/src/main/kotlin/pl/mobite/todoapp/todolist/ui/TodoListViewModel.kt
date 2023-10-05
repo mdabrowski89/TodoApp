@@ -23,7 +23,10 @@ class TodoListViewModel(
     private val deleteAllDoneTodoItemsUseCase = DeleteAllDoneTodoItemsUseCase(DummyTodoItemService)
     private val updateTodoItemUseCase = UpdateTodoItemUseCase(DummyTodoItemService)
 
-    override fun defaultErrorHandler(t: Throwable): Reducer<TodoListViewState> = { withError(t) }
+    override fun defaultErrorHandler(t: Throwable): Reducer<TodoListViewState> = {
+        event(ErrorEvent)
+        withError(t)
+    }
 
     override fun isViewStateSavable(viewState: TodoListViewState) = !viewState.inProgress
 

@@ -4,9 +4,14 @@ import android.os.TransactionTooLargeException
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flatMapMerge
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -39,6 +44,11 @@ abstract class MviViewModel<VS : ViewState>(
 
     protected val viewState
         get() = viewStateFlow.value
+
+    private val stickyEventsFlow = MutableSharedFlow<Event>(replay = Int.MAX_VALUE)
+    private val nonStickyEventsFlow = MutableSharedFlow<Event>(replay = 0)
+
+    val eventsFlow: Flow<Event> = stickyEventsFlow.flatMapMerge { nonStickyEventsFlow }
 
     init {
         viewStateFlow
@@ -101,5 +111,13 @@ abstract class MviViewModel<VS : ViewState>(
      */
     protected suspend fun FlowCollector<Reducer<VS>>.reduce(reducer: Reducer<VS>) {
         emit(reducer)
+    }
+
+    protected fun event(event: Event, sticky: Boolean = false) {
+        if (sticky) {
+            stickyEventsFlow.tryEmit(event)
+        } else {
+            nonStickyEventsFlow.tryEmit(event)
+        }
     }
 }

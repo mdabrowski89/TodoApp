@@ -28,3 +28,5 @@ class Action<VS : ViewState>(
     val id: String,
     val process: () -> Flow<Reducer<VS>>
 )
+
+interface Event

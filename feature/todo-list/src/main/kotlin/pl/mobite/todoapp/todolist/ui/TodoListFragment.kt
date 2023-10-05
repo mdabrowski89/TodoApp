@@ -2,9 +2,11 @@ package pl.mobite.todoapp.todolist.ui
 
 import android.os.Bundle
 import android.view.View
+import android.widget.Toast
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import pl.mobite.lib.mvi.Event
 import pl.mobite.lib.utilities.collectFlowWhenStarted
 import pl.mobite.lib.viewbinding.viewBinding
 import pl.mobite.todoapp.todolist.R.layout
@@ -24,6 +26,7 @@ class TodoListFragment: Fragment(layout.fragment_todo_list) {
         initTodoList()
         initButtons()
         collectFlowWhenStarted(viewModel.viewStateFlow) { binding.render(it) }
+        collectFlowWhenStarted(viewModel.eventsFlow) { binding.handleEvents(it) }
     }
 
     private fun initTodoList() = with(binding) {
@@ -50,5 +53,10 @@ class TodoListFragment: Fragment(layout.fragment_todo_list) {
         addItemButton.isEnabled = addingItemsEnabled
         deleteCompletedItems.isEnabled = deleteButtonEnabled
         todoListAdapter.submitList(todoItems)
+    }
+
+    private fun FragmentTodoListBinding.handleEvents(event: Event) = when (event) {
+        ErrorEvent -> Toast.makeText(requireContext(), "Error", Toast.LENGTH_SHORT).show()
+        else -> { /*NOP*/ }
     }
 }
