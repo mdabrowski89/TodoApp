@@ -4,13 +4,11 @@ import android.os.TransactionTooLargeException
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.flatMapMerge
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.merge
@@ -114,7 +112,7 @@ abstract class MviViewModel<VS : ViewState>(
         emit(reducer)
     }
 
-    protected suspend fun sideEffect(sideEffect: SideEffect, sticky: Boolean = false) {
+    protected suspend fun sendSideEffect(sideEffect: SideEffect, sticky: Boolean = false) {
         if (sticky) {
             stickySideEffectFlow.emit(sideEffect)
         } else {

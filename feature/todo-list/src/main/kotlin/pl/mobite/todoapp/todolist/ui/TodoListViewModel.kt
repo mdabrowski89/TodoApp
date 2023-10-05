@@ -24,7 +24,7 @@ class TodoListViewModel(
     private val updateTodoItemUseCase = UpdateTodoItemUseCase(DummyTodoItemService)
 
     override suspend fun defaultErrorHandler(t: Throwable): Reducer<TodoListViewState> {
-        sideEffect(ErrorSideEffect)
+        sendSideEffect(ErrorSideEffect)
         return { withError(t) }
     }
 
@@ -68,7 +68,7 @@ class TodoListViewModel(
         reduce { withProgress() }
         val updatedItem = item.copy(isDone = isDone)
         updateTodoItemUseCase(updatedItem)
-        sideEffect(ItemUpdatedSideEffect)
+        sendSideEffect(ItemUpdatedSideEffect)
         reduce {
             val newItems = todoItems?.map { item -> if (item.id == updatedItem.id) updatedItem else item }
             withItems(newItems)
