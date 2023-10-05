@@ -6,8 +6,8 @@ import android.widget.Toast
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
-import pl.mobite.lib.mvi.Event
-import pl.mobite.lib.utilities.collectFlowWhenStarted
+import pl.mobite.lib.mvi.SideEffect
+import pl.mobite.lib.utilities.collectWithLifecycle
 import pl.mobite.lib.viewbinding.viewBinding
 import pl.mobite.todoapp.todolist.R.layout
 import pl.mobite.todoapp.todolist.databinding.FragmentTodoListBinding
@@ -25,8 +25,8 @@ class TodoListFragment: Fragment(layout.fragment_todo_list) {
         super.onViewCreated(view, savedInstanceState)
         initTodoList()
         initButtons()
-        collectFlowWhenStarted(viewModel.viewStateFlow) { binding.render(it) }
-        collectFlowWhenStarted(viewModel.eventsFlow) { binding.handleEvents(it) }
+        viewModel.viewStateFlow.collectWithLifecycle(this) { binding.render(it) }
+        viewModel.sideEffectFlow.collectWithLifecycle(this) { binding.handleSideEffects(it) }
     }
 
     private fun initTodoList() = with(binding) {
@@ -55,8 +55,9 @@ class TodoListFragment: Fragment(layout.fragment_todo_list) {
         todoListAdapter.submitList(todoItems)
     }
 
-    private fun FragmentTodoListBinding.handleEvents(event: Event) = when (event) {
-        ErrorEvent -> Toast.makeText(requireContext(), "Error", Toast.LENGTH_SHORT).show()
+    private fun FragmentTodoListBinding.handleSideEffects(sideEffect: SideEffect) = when (sideEffect) {
+        ErrorSideEffect -> Toast.makeText(requireContext(), "Error", Toast.LENGTH_SHORT).show()
+        ItemUpdatedSideEffect -> Toast.makeText(requireContext(), "Item updated", Toast.LENGTH_SHORT).show()
         else -> { /*NOP*/ }
     }
 }

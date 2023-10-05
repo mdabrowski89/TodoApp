@@ -4,16 +4,16 @@ import android.os.TransactionTooLargeException
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flatMapMerge
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
 
 /**
@@ -45,10 +45,10 @@ abstract class MviViewModel<VS : ViewState>(
     protected val viewState
         get() = viewStateFlow.value
 
-    private val stickyEventsFlow = MutableSharedFlow<Event>(replay = Int.MAX_VALUE)
-    private val nonStickyEventsFlow = MutableSharedFlow<Event>(replay = 0)
+    private val nonStickySideEffectFlow = MutableSharedFlow<SideEffect>(replay = 0)
+    private val stickySideEffectFlow = MutableSharedFlow<SideEffect>(replay = Int.MAX_VALUE)
 
-    val eventsFlow: Flow<Event> = stickyEventsFlow.flatMapMerge { nonStickyEventsFlow }
+    val sideEffectFlow: Flow<SideEffect> = merge(nonStickySideEffectFlow, stickySideEffectFlow)
 
     init {
         viewStateFlow
@@ -64,7 +64,7 @@ abstract class MviViewModel<VS : ViewState>(
      */
     fun processAction(
         actionId: String,
-        errorHandler: (Throwable) -> Reducer<VS> = ::defaultErrorHandler,
+        errorHandler: suspend (Throwable) -> Reducer<VS> = ::defaultErrorHandler,
         actionBlock: suspend FlowCollector<Reducer<VS>>.() -> Unit
     ) {
         val action = Action(actionId) {
@@ -78,7 +78,7 @@ abstract class MviViewModel<VS : ViewState>(
      * Returns [Reducer] which is emitted after the action processing is interrupted by an unhandled exception.
      * This is used as a default when the [processAction] method does not provide its own error handler.
      */
-    protected abstract fun defaultErrorHandler(t: Throwable): Reducer<VS>
+    protected abstract suspend fun defaultErrorHandler(t: Throwable): Reducer<VS>
 
     /**
      * Stores the provided [ViewState] object in the [savedStateHandle] in order to be able to restore it on ViewModel recreation.
@@ -109,15 +109,16 @@ abstract class MviViewModel<VS : ViewState>(
     /**
      * Helper function which emitting provided [Reducer] objects. It is added as a part of DLS of the [processAction] method.
      */
+    // TODO: maybe rename to viewState()?
     protected suspend fun FlowCollector<Reducer<VS>>.reduce(reducer: Reducer<VS>) {
         emit(reducer)
     }
 
-    protected fun event(event: Event, sticky: Boolean = false) {
+    protected suspend fun sideEffect(sideEffect: SideEffect, sticky: Boolean = false) {
         if (sticky) {
-            stickyEventsFlow.tryEmit(event)
+            stickySideEffectFlow.emit(sideEffect)
         } else {
-            nonStickyEventsFlow.tryEmit(event)
+            nonStickySideEffectFlow.emit(sideEffect)
         }
     }
 }

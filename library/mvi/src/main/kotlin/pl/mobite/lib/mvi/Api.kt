@@ -2,6 +2,7 @@ package pl.mobite.lib.mvi
 
 import android.os.Parcelable
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 
@@ -21,12 +22,14 @@ typealias Reducer<VS> = VS.() -> VS
  * Action are processed by the [ActionProcessor] - thanks to the usage of coroutines multiple actions can run at the same time.
  *
  * @param id - identification string of this action (can be any string). New action cancel the currently processed action with the same [id].
- * @param process - action body, it is invoked in new a coroutine, on a [Dispatchers.Default] and in [viewModelScope].
+ * @param dispatcher - dispatcher for new coroutine on which action body is invoked.
+ * @param process - action body, it is invoked in new a coroutine, on a [dispatcher] and in [viewModelScope].
  * The [Reducer]s which are emitted from the resulted flow are executed on a main thread ([Dispatchers.Main]).
  */
 class Action<VS : ViewState>(
     val id: String,
-    val process: () -> Flow<Reducer<VS>>
+    val dispatcher: CoroutineDispatcher = Dispatchers.IO, // TODO: test Dispatchers.Default vs Dispatchers.IO
+    val process: () -> Flow<Reducer<VS>>,
 )
 
-interface Event
+interface SideEffect

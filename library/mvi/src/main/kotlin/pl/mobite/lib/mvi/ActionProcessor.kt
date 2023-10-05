@@ -1,7 +1,6 @@
 package pl.mobite.lib.mvi
 
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.channels.Channel
@@ -45,7 +44,7 @@ internal class ActionProcessor<VS : ViewState>(
 
     /**
      * Send action for the processing.
-     * Each action `process()` methods is executed in a new coroutine which runs on a [Dispatchers.Default] and in scope dedicated to the [Action.id].
+     * Each action `process()` methods is executed in a new coroutine which runs on a [Action.dispatcher] and in scope dedicated to the [Action.id].
      */
     fun process(action: Action<VS>) {
         actionChannel.trySend(action)
@@ -75,7 +74,7 @@ internal class ActionProcessor<VS : ViewState>(
             actionCoroutineScope.coroutineContext[Job]?.cancelChildrenAndJoin()
 
             // within the coroutine scope dedicated to the action create new coroutine which will start the action processing
-            actionCoroutineScope.launch(Dispatchers.Default) {
+            actionCoroutineScope.launch(action.dispatcher) {
                 // results of the processing are sent to the [Reducer] channel
                 action.process().collect(::send)
             }
@@ -86,6 +85,7 @@ internal class ActionProcessor<VS : ViewState>(
      * Emits new [ViewState] on the [viewStateFlow] by applying [Reducer] to the current [ViewState]
      */
     private fun reduce(reducer: Reducer<VS>) {
+        // TODO: check if it is executed on main thread
         viewStateFlow.value = viewStateFlow.value.reducer()
     }
 
