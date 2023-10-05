@@ -6,8 +6,10 @@ import android.widget.Toast
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import pl.mobite.lib.mvi.SideEffect
-import pl.mobite.lib.utilities.collectWithViewLifecycle
+import pl.mobite.lib.utilities.collectWithLifecycle
 import pl.mobite.lib.viewbinding.viewBinding
 import pl.mobite.todoapp.todolist.R.layout
 import pl.mobite.todoapp.todolist.databinding.FragmentTodoListBinding
@@ -25,8 +27,7 @@ class TodoListFragment: Fragment(layout.fragment_todo_list) {
         super.onViewCreated(view, savedInstanceState)
         initTodoList()
         initButtons()
-        viewModel.viewStateFlow.collectWithViewLifecycle(this) { binding.render(it) }
-        viewModel.sideEffectFlow.collectWithViewLifecycle(this) { binding.handleSideEffects(it) }
+        observerViewStateAndSideEffect()
     }
 
     private fun initTodoList() = with(binding) {
@@ -39,6 +40,19 @@ class TodoListFragment: Fragment(layout.fragment_todo_list) {
         }
         deleteCompletedItems.setOnClickListener {
             viewModel.deleteCompletedItems()
+        }
+    }
+
+    private fun observerViewStateAndSideEffect() {
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.viewStateFlow.collectWithLifecycle(viewLifecycleOwner.lifecycle) {
+                binding.render(it)
+            }
+        }
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.sideEffectFlow.collectWithLifecycle(viewLifecycleOwner.lifecycle) {
+                binding.handleSideEffects(it)
+            }
         }
     }
 
