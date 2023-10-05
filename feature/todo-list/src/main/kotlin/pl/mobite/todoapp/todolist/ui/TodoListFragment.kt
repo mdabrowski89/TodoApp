@@ -7,7 +7,7 @@ import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import pl.mobite.lib.mvi.SideEffect
-import pl.mobite.lib.utilities.collectWithLifecycle
+import pl.mobite.lib.utilities.collectWithViewLifecycle
 import pl.mobite.lib.viewbinding.viewBinding
 import pl.mobite.todoapp.todolist.R.layout
 import pl.mobite.todoapp.todolist.databinding.FragmentTodoListBinding
@@ -25,8 +25,8 @@ class TodoListFragment: Fragment(layout.fragment_todo_list) {
         super.onViewCreated(view, savedInstanceState)
         initTodoList()
         initButtons()
-        viewModel.viewStateFlow.collectWithLifecycle(this) { binding.render(it) }
-        viewModel.sideEffectFlow.collectWithLifecycle(this) { binding.handleSideEffects(it) }
+        viewModel.viewStateFlow.collectWithViewLifecycle(this) { binding.render(it) }
+        viewModel.sideEffectFlow.collectWithViewLifecycle(this) { binding.handleSideEffects(it) }
     }
 
     private fun initTodoList() = with(binding) {

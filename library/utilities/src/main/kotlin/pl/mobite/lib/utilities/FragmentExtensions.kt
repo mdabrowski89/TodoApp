@@ -8,9 +8,9 @@ import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.launch
 
 
-fun <T>Flow<T>.collectWithLifecycle(fragment: Fragment, flowCollector: FlowCollector<T>) {
+fun <T>Flow<T>.collectWithViewLifecycle(fragment: Fragment, flowCollector: FlowCollector<T>) {
     fragment.viewLifecycleOwner.lifecycleScope.launch {
-        this@collectWithLifecycle
+        this@collectWithViewLifecycle
             .flowWithLifecycle(fragment.viewLifecycleOwner.lifecycle)
             .collect(flowCollector)
     }
