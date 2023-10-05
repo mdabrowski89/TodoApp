@@ -1,17 +1,11 @@
 package pl.mobite.lib.utilities
 
-import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.flowWithLifecycle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
-import kotlinx.coroutines.launch
 
-fun <T>Fragment.collectFlowWhenStarted(flow: Flow<T>, flowCollector: FlowCollector<T>) {
-    viewLifecycleOwner.lifecycleScope.launch {
-        viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            flow.collect(flowCollector)
-        }
-    }
+suspend fun <T> Flow<T>.collectWithLifecycle(lifecycle: Lifecycle, flowCollector: FlowCollector<T>) {
+    flowWithLifecycle(lifecycle)
+        .collect(flowCollector)
 }

@@ -2,6 +2,7 @@ package pl.mobite.todoapp.todolist.ui
 
 import kotlinx.parcelize.IgnoredOnParcel
 import kotlinx.parcelize.Parcelize
+import pl.mobite.lib.mvi.SideEffect
 import pl.mobite.lib.mvi.ViewState
 import pl.mobite.todoapp.todolist.domain.model.TodoItem
 
@@ -23,3 +24,7 @@ data class TodoListViewState(
     val progressVisible
         get() = inProgress
 }
+
+// TODO: change to sealed class?
+object ErrorSideEffect: SideEffect
+object ItemUpdatedSideEffect: SideEffect

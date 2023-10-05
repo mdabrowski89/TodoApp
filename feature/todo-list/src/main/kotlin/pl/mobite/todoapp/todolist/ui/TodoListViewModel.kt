@@ -23,7 +23,10 @@ class TodoListViewModel(
     private val deleteAllDoneTodoItemsUseCase = DeleteAllDoneTodoItemsUseCase(DummyTodoItemService)
     private val updateTodoItemUseCase = UpdateTodoItemUseCase(DummyTodoItemService)
 
-    override fun defaultErrorHandler(t: Throwable): Reducer<TodoListViewState> = { withError(t) }
+    override suspend fun defaultErrorHandler(t: Throwable): Reducer<TodoListViewState> {
+        sendSideEffect(ErrorSideEffect)
+        return { withError(t) }
+    }
 
     override fun isViewStateSavable(viewState: TodoListViewState) = !viewState.inProgress
 
@@ -65,6 +68,7 @@ class TodoListViewModel(
         reduce { withProgress() }
         val updatedItem = item.copy(isDone = isDone)
         updateTodoItemUseCase(updatedItem)
+        sendSideEffect(ItemUpdatedSideEffect)
         reduce {
             val newItems = todoItems?.map { item -> if (item.id == updatedItem.id) updatedItem else item }
             withItems(newItems)
