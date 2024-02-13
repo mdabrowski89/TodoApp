@@ -27,7 +27,7 @@ data class TodoListViewState(
 
 sealed class TodoListSideEffect : SideEffect {
 
-    object ErrorSideEffect : TodoListSideEffect()
+    data object ErrorSideEffect : TodoListSideEffect()
 
-    object ItemUpdatedSideEffect : TodoListSideEffect()
+    data object ItemUpdatedSideEffect : TodoListSideEffect()
 }

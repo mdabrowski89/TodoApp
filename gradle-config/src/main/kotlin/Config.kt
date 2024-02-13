@@ -8,13 +8,13 @@ object AppConfig {
     const val versionName = "1.0"
 
     const val minSdk = 21
-    const val compileSdk = 33
+    const val compileSdk = 34
 }
 
 object BuildConfig {
 
-    const val jvmTarget = "1.8"
-    val javaCompatibility = JavaVersion.VERSION_1_8
+    const val jvmTarget = "17"
+    val javaCompatibility = JavaVersion.VERSION_17
 
     const val viewBinding = true
 }
