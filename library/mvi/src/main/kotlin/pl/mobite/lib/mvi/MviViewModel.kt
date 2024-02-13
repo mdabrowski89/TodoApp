@@ -8,6 +8,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.launchIn
@@ -18,7 +20,7 @@ import kotlinx.coroutines.flow.onEach
  * Base [ViewModel] class which is able to create and process [Action]s and it exposes the flow of [ViewState]s.
  * Actions are created and sends to the processing in [processAction] method. View states are emitted via [viewStateFlow]
  *
- * Internally it uses [ActionProcessor] as an engine which process [Action]s, collects its [Reducer]s and uses them to create new [ViewState]s.
+ * Internally it uses [ActionsProcessor] as an engine which process [Action]s, collects its [Reducer]s and uses them to create new [ViewState]s.
  *
  * It is also caching the recently emitted [ViewState] and it is later used as  [ViewModel] recreation.
  *
@@ -26,27 +28,25 @@ import kotlinx.coroutines.flow.onEach
  * @param initialViewState - [ViewState] which is emitted as a first object by the flow of view states (it is ignored on viewModel recreation when
  * there is already a different view state object in the cache - the view state from the is emitted in this case).
  */
-abstract class MviViewModel<VS : ViewState>(
+abstract class MviViewModel<VS : ViewState, SE : SideEffect>(
     private val savedStateHandle: SavedStateHandle,
     initialViewState: VS
 ) : ViewModel() {
 
     private val viewStateKey = "cache.viewState.${this::class.simpleName}"
 
-    private val actionProcessor: ActionProcessor<VS> = ActionProcessor(
+    private val actionsProcessor: ActionsProcessor<VS> = ActionsProcessor(
         initialViewState = savedStateHandle.get<VS>(viewStateKey) ?: initialViewState,
         coroutineScope = viewModelScope
     )
 
-    val viewStateFlow: StateFlow<VS> = actionProcessor.viewStateFlow
+    val viewStateFlow: StateFlow<VS> = actionsProcessor.viewStateFlow.asStateFlow()
 
-    protected val viewState
+    val currentViewState: VS
         get() = viewStateFlow.value
 
-    private val nonStickySideEffectFlow = MutableSharedFlow<SideEffect>(replay = 0)
-    private val stickySideEffectFlow = MutableSharedFlow<SideEffect>(replay = Int.MAX_VALUE)
-
-    val sideEffectFlow: Flow<SideEffect> = merge(nonStickySideEffectFlow, stickySideEffectFlow)
+    private val _sideEffectFlow = MutableSharedFlow<SE>()
+    val sideEffectFlow: Flow<SE> = _sideEffectFlow.asSharedFlow()
 
     init {
         viewStateFlow
@@ -54,29 +54,36 @@ abstract class MviViewModel<VS : ViewState>(
             .launchIn(viewModelScope)
     }
 
+    override fun onCleared() {
+        actionsProcessor.cancelAll()
+        super.onCleared()
+    }
+
     /**
-     * Creates new [Action] object and sends it to be processed by the [ActionProcessor].
+     * Creates new [Action] object and sends it to be processed by the [ActionsProcessor].
      * @param actionId - when action processing starts then the previously processed action with the same id is canceled.
-     * @param errorHandler - it returns reducer which is emitted after the action processing is interrupted by an unhandled exception
+     * @param errorHandler - is invoked in case the action processing is interrupted by an unhandled exception. Can also produce reducer, which is then emitted via [Reducer] flow.
      * @param actionBlock - action body is defined as method which is passed to the [Reducer] flow build
      */
-    fun processAction(
+    protected fun processAction(
         actionId: String,
-        errorHandler: suspend (Throwable) -> Reducer<VS> = ::defaultErrorHandler,
+        errorHandler: suspend (Throwable, suspend (Reducer<VS>) -> Unit) -> Unit = ::defaultErrorHandler,
         actionBlock: suspend FlowCollector<Reducer<VS>>.() -> Unit
     ) {
         val action = Action(actionId) {
             flow(actionBlock)
-                .catch { reduce(errorHandler(it)) }
+                .catch { throwable ->
+                    errorHandler(throwable) { reducer -> emit(reducer) }
+                }
         }
-        actionProcessor.process(action)
+        actionsProcessor.process(action)
     }
 
     /**
      * Returns [Reducer] which is emitted after the action processing is interrupted by an unhandled exception.
      * This is used as a default when the [processAction] method does not provide its own error handler.
      */
-    protected abstract suspend fun defaultErrorHandler(t: Throwable): Reducer<VS>
+    protected abstract suspend fun defaultErrorHandler(t: Throwable, reduce: suspend (Reducer<VS>) -> Unit)
 
     /**
      * Stores the provided [ViewState] object in the [savedStateHandle] in order to be able to restore it on ViewModel recreation.
@@ -107,16 +114,11 @@ abstract class MviViewModel<VS : ViewState>(
     /**
      * Helper function which emitting provided [Reducer] objects. It is added as a part of DLS of the [processAction] method.
      */
-    // TODO: maybe rename to viewState()?
     protected suspend fun FlowCollector<Reducer<VS>>.reduce(reducer: Reducer<VS>) {
         emit(reducer)
     }
 
-    protected suspend fun sendSideEffect(sideEffect: SideEffect, sticky: Boolean = false) {
-        if (sticky) {
-            stickySideEffectFlow.emit(sideEffect)
-        } else {
-            nonStickySideEffectFlow.emit(sideEffect)
-        }
+    protected suspend fun sendSideEffect(sideEffect: SE) {
+        _sideEffectFlow.emit(sideEffect)
     }
 }

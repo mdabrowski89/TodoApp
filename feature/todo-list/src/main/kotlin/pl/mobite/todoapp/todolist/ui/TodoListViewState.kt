@@ -25,6 +25,9 @@ data class TodoListViewState(
         get() = inProgress
 }
 
-// TODO: change to sealed class?
-object ErrorSideEffect: SideEffect
-object ItemUpdatedSideEffect: SideEffect
+sealed class TodoListSideEffect : SideEffect {
+
+    object ErrorSideEffect : TodoListSideEffect()
+
+    object ItemUpdatedSideEffect : TodoListSideEffect()
+}

@@ -9,11 +9,13 @@ import pl.mobite.todoapp.todolist.domain.usecase.AddTodoItemUseCase
 import pl.mobite.todoapp.todolist.domain.usecase.DeleteAllDoneTodoItemsUseCase
 import pl.mobite.todoapp.todolist.domain.usecase.GetAllTodoItemsUseCase
 import pl.mobite.todoapp.todolist.domain.usecase.UpdateTodoItemUseCase
+import pl.mobite.todoapp.todolist.ui.TodoListSideEffect.ErrorSideEffect
+import pl.mobite.todoapp.todolist.ui.TodoListSideEffect.ItemUpdatedSideEffect
 import kotlin.random.Random
 
 class TodoListViewModel(
     savedStateHandle: SavedStateHandle,
-) : MviViewModel<TodoListViewState>(
+) : MviViewModel<TodoListViewState, TodoListSideEffect>(
     savedStateHandle = savedStateHandle,
     initialViewState = TodoListViewState()
 ) {
@@ -23,21 +25,21 @@ class TodoListViewModel(
     private val deleteAllDoneTodoItemsUseCase = DeleteAllDoneTodoItemsUseCase(DummyTodoItemService)
     private val updateTodoItemUseCase = UpdateTodoItemUseCase(DummyTodoItemService)
 
-    override suspend fun defaultErrorHandler(t: Throwable): Reducer<TodoListViewState> {
+    override suspend fun defaultErrorHandler(t: Throwable, reduce: suspend (Reducer<TodoListViewState>) -> Unit) {
         sendSideEffect(ErrorSideEffect)
-        return { withError(t) }
+        reduce { errorResult() }
     }
 
     override fun isViewStateSavable(viewState: TodoListViewState) = !viewState.inProgress
 
     fun loadItems() {
-        if (viewState.todoItems != null) {
+        if (currentViewState.todoItems != null) {
             return
         }
         processAction("loadItems") {
-            reduce { withProgress() }
+            reduce { inProgressResult() }
             val todoItems = getAllTodoItemUseCase()
-            reduce { withItems(todoItems) }
+            reduce { itemsResult(todoItems) }
         }
     }
 
@@ -46,36 +48,49 @@ class TodoListViewModel(
             return
         }
         processAction("addItem") {
-            reduce { withProgress() }
+            reduce { inProgressResult() }
             val newItem = addTodoItemUseCase(TodoItem(Random.nextLong(), todoItemContent, false))
             reduce {
                 val newItems = todoItems?.plus(newItem)
-                withItems(newItems)
+                itemsResult(newItems)
             }
         }
     }
 
-    fun deleteCompletedItems() = processAction("deleteCompletedItems") {
-        reduce { withProgress() }
-        val deletedItems = deleteAllDoneTodoItemsUseCase()
-        reduce {
-            val newItems = todoItems?.toMutableList()?.apply { removeAll(deletedItems) }
-            withItems(newItems)
+    fun deleteCompletedItems() {
+        processAction("deleteCompletedItems") {
+            reduce { inProgressResult() }
+            val deletedItems = deleteAllDoneTodoItemsUseCase()
+            reduce {
+                val newItems = todoItems?.toMutableList()?.apply { removeAll(deletedItems) }
+                itemsResult(newItems)
+            }
         }
     }
 
-    fun updateItem(item: TodoItem, isDone: Boolean) = processAction("updateItem-${item.id}") {
-        reduce { withProgress() }
-        val updatedItem = item.copy(isDone = isDone)
-        updateTodoItemUseCase(updatedItem)
-        sendSideEffect(ItemUpdatedSideEffect)
-        reduce {
-            val newItems = todoItems?.map { item -> if (item.id == updatedItem.id) updatedItem else item }
-            withItems(newItems)
+    fun updateItem(item: TodoItem, isDone: Boolean) {
+        processAction("updateItem-${item.id}") {
+            reduce { inProgressResult() }
+            val updatedItem = item.copy(isDone = isDone)
+            updateTodoItemUseCase(updatedItem)
+            sendSideEffect(ItemUpdatedSideEffect)
+            reduce {
+                val newItems = todoItems?.map { item -> if (item.id == updatedItem.id) updatedItem else item }
+                itemsResult(newItems)
+            }
         }
     }
-
-    private fun TodoListViewState.withProgress() = this.copy(inProgress = true)
-    private fun TodoListViewState.withError(t: Throwable) = this.copy(inProgress = false)
-    private fun TodoListViewState.withItems(todoItems: List<TodoItem>?) = this.copy(inProgress = false, todoItems = todoItems)
 }
+
+private fun TodoListViewState.inProgressResult() = copy(
+    inProgress = true
+)
+
+private fun TodoListViewState.errorResult() = copy(
+    inProgress = false
+)
+
+private fun TodoListViewState.itemsResult(todoItems: List<TodoItem>?) = copy(
+    inProgress = false,
+    todoItems = todoItems
+)

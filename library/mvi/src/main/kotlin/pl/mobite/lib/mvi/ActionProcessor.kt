@@ -1,12 +1,17 @@
 package pl.mobite.lib.mvi
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.channelFlow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -21,7 +26,8 @@ import kotlinx.coroutines.launch
  * @param coroutineScope - coroutine scope on which the flow of [Reducer]s is collected. It is also used as a parent scope for the individual scopes
  * in which actions are executed.
  */
-internal class ActionProcessor<VS : ViewState>(
+@OptIn(ExperimentalCoroutinesApi::class)
+internal class ActionsProcessor<VS : ViewState>(
     initialViewState: VS,
     coroutineScope: CoroutineScope
 ) {
@@ -36,9 +42,17 @@ internal class ActionProcessor<VS : ViewState>(
      */
     private val actionChannel: Channel<Action<VS>> = Channel(Channel.UNLIMITED)
 
+    /**
+     * For each [Action.id] it keeps the dedicated coroutine scope in which this action is executed.
+     * This allows for easy cancellation of currently processed action when new action (with the same id) is send to the processing.
+     */
+    private val coroutineScopePerActionId: HashMap<String, CoroutineScope> = hashMapOf()
+
     init {
         collectAndProcessActions()
+            .flowOn(Dispatchers.IO)
             .onEach(::reduce)
+            .flowOn(Dispatchers.IO.limitedParallelism(1))
             .launchIn(coroutineScope)
     }
 
@@ -51,23 +65,25 @@ internal class ActionProcessor<VS : ViewState>(
     }
 
     /**
+     * Cancel all coroutine scopes, used to process actions. This will also cancel all their children.
+     */
+    fun cancelAll() {
+        coroutineScopePerActionId.values.forEach { coroutineScope -> coroutineScope.cancel() }
+    }
+
+    /**
      * Starts new channel for [Reducer] objects and returns it as flow.
      * Channel is created in a way that it collects all actions from the [actionChannel],
      * process them, and sends the resulted [Reducer] objects to itself.
      */
     private fun collectAndProcessActions(): Flow<Reducer<VS>> = channelFlow {
-
-        // For each [action.id] it keeps the dedicated coroutine scope in which this action is executed.
-        // This allows for easy cancellation of currently processed action when new action (with the same id) is send to the processing.
-        val coroutineScopePerActionId: HashMap<String, CoroutineScope> = hashMapOf()
-
         // collect actions from actionsChannel
         actionChannel.receiveAsFlow().collect { action: Action<VS> ->
 
             // for each action: get the [CoroutineScope] of this action based on its id
             val actionCoroutineScope = coroutineScopePerActionId.getOrPut(action.id) {
-                // if not present then create new one from the [Reducer] channel context and new Job object
-                CoroutineScope(this.coroutineContext + Job())
+                // if not present then create new one from the [Reducer] channel context and new [SupervisorJob] object
+                CoroutineScope(this.coroutineContext + SupervisorJob())
             }
 
             // cancel any actions which are currently processed in the coroutine scope which is dedicated to this action.id
@@ -85,7 +101,6 @@ internal class ActionProcessor<VS : ViewState>(
      * Emits new [ViewState] on the [viewStateFlow] by applying [Reducer] to the current [ViewState]
      */
     private fun reduce(reducer: Reducer<VS>) {
-        // TODO: check if it is executed on main thread
         viewStateFlow.value = viewStateFlow.value.reducer()
     }
 

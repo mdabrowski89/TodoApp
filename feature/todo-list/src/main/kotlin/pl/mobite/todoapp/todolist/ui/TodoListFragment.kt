@@ -13,6 +13,8 @@ import pl.mobite.lib.utilities.collectWithLifecycle
 import pl.mobite.lib.viewbinding.viewBinding
 import pl.mobite.todoapp.todolist.R.layout
 import pl.mobite.todoapp.todolist.databinding.FragmentTodoListBinding
+import pl.mobite.todoapp.todolist.ui.TodoListSideEffect.ErrorSideEffect
+import pl.mobite.todoapp.todolist.ui.TodoListSideEffect.ItemUpdatedSideEffect
 
 class TodoListFragment: Fragment(layout.fragment_todo_list) {
 
@@ -25,8 +27,10 @@ class TodoListFragment: Fragment(layout.fragment_todo_list) {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
         initTodoList()
         initButtons()
+
         observerViewStateAndSideEffect()
     }
 
@@ -43,16 +47,12 @@ class TodoListFragment: Fragment(layout.fragment_todo_list) {
         }
     }
 
-    private fun observerViewStateAndSideEffect() {
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.viewStateFlow.collectWithLifecycle(viewLifecycleOwner.lifecycle) {
-                binding.render(it)
-            }
+    private fun observerViewStateAndSideEffect() = with(viewLifecycleOwner) {
+        lifecycleScope.launch {
+            viewModel.viewStateFlow.collectWithLifecycle(lifecycle) { render(it) }
         }
-        viewLifecycleOwner.lifecycleScope.launch {
-            viewModel.sideEffectFlow.collectWithLifecycle(viewLifecycleOwner.lifecycle) {
-                binding.handleSideEffects(it)
-            }
+        lifecycleScope.launch {
+            viewModel.sideEffectFlow.collectWithLifecycle(lifecycle) { handleSideEffects(it) }
         }
     }
 
@@ -61,17 +61,18 @@ class TodoListFragment: Fragment(layout.fragment_todo_list) {
         viewModel.loadItems()
     }
 
-    private fun FragmentTodoListBinding.render(viewState: TodoListViewState) = with(viewState) {
-        progressBar.isVisible = progressVisible
-        newItemInput.isEnabled = addingItemsEnabled
-        addItemButton.isEnabled = addingItemsEnabled
-        deleteCompletedItems.isEnabled = deleteButtonEnabled
+    private fun render(viewState: TodoListViewState) = with(viewState) {
+        with(binding) {
+            progressBar.isVisible = progressVisible
+            newItemInput.isEnabled = addingItemsEnabled
+            addItemButton.isEnabled = addingItemsEnabled
+            deleteCompletedItems.isEnabled = deleteButtonEnabled
+        }
         todoListAdapter.submitList(todoItems)
     }
 
-    private fun FragmentTodoListBinding.handleSideEffects(sideEffect: SideEffect) = when (sideEffect) {
+    private fun handleSideEffects(sideEffect: TodoListSideEffect) = when (sideEffect) {
         ErrorSideEffect -> Toast.makeText(requireContext(), "Error", Toast.LENGTH_SHORT).show()
         ItemUpdatedSideEffect -> Toast.makeText(requireContext(), "Item updated", Toast.LENGTH_SHORT).show()
-        else -> { /*NOP*/ }
     }
 }
