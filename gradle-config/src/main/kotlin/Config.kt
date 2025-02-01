@@ -13,8 +13,8 @@ object AppConfig {
 
 object BuildConfig {
 
-    const val jvmTarget = "17"
-    val javaCompatibility = JavaVersion.VERSION_17
+    const val jvmTarget = "21"
+    val javaCompatibility = JavaVersion.VERSION_21
 
     const val viewBinding = true
 }
